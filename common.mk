@@ -2,7 +2,7 @@ XA=xa
 
 all: $(BIN)
 
-$(BIN): $(SRC)
+$(BIN): main.s $(SRC)
 	$(XA) -OPETSCII -o $@ $^
 
 clean:
