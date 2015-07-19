@@ -3,7 +3,7 @@ XA=xa
 all: $(BIN)
 
 $(BIN): $(SRC)
-	$(XA) -o $@ $^
+	$(XA) -OPETSCII -o $@ $^
 
 clean:
 	rm -f $(BIN)
