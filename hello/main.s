@@ -11,5 +11,5 @@
 * = $1000
 
 main:
-  inc $d020    ; Flashy border!
-  jmp main
+    inc $d020    ; Flashy border!
+    jmp main

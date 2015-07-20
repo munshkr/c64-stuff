@@ -7,7 +7,7 @@
 .byte $34, $39, $31, $35, $32            ; 4096 = $1000
 .byte $00, $00, $00
 
-.dsb $c000 - *  ; pad with zeroes from PC to $1000
+.dsb $c000 - *  ; pad with zeroes from PC to $c000
 * = $c000
 
 main:
