@@ -33,7 +33,7 @@ main:
     lda #$00          ; trigger interrupt at row zero
     sta $d012
 
-    lda #%00000011    ; VIC bank #0 ($0000-$3f00)
+    lda #%00000011    ; VIC bank #0 ($0000-$3fff)
     sta $dd00
 
     lda #%00010110    ; Screen RAM #0001 ($0400-$07FF), Char ROM #011 ($1800-$1FFF)
