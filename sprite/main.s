@@ -63,6 +63,11 @@ char_color = $0f
 posx = ((screen_width / 2) + screen_right_border_width - sprite_half_width)
 posy = ((screen_height / 2) + screen_top_border_height - sprite_half_height)
 
+total_frames = 6
+
+cur_frame: .byte total_frames
+
+
 init_sprite:
     lda #$80        ; set sprite #0 with frame at $2000
     sta $07f8
