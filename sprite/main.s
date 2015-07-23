@@ -21,8 +21,33 @@ main:
     jsr init_screen   ; clear the screen
     jsr init_sprite   ; enable sprite
 
+    ldy #$7f          ; $7f = %01111111
+    sty $dc0d         ; turn off CIAs Timer interrupts ($7f = %01111111)
+    sty $dd0d
+    lda $dc0d         ; by reading $dc0d and $dd0d we cancel all CIA-IRQs
+    lda $dd0d         ; in queue/unprocessed.
+
+    lda #$01          ; set Interrupt Request Mask
+    sta $d01a         ; we want IRQ by Rasterbeam (%00000001)
+
+    lda #<irq         ; point IRQ Vector to our custom irq routine
+    ldx #>irq
+    sta $0314         ; store in $314/$315
+    stx $0315
+
+    lda #$00          ; trigger interrupt at row zero
+    sta $d012
+
     cli
     jmp *
+
+
+irq:
+    dec $d019       ; acknowledge IRQ / clear register for next interrupt
+
+    jsr update_sprite
+
+    jmp $ea31       ; return to Kernel routine
 
 
 init_screen:
@@ -64,14 +89,14 @@ posx = ((screen_width / 2) + screen_right_border_width - sprite_half_width)
 posy = ((screen_height / 2) + screen_top_border_height - sprite_half_height)
 
 total_frames = 6
+speed = 3
 
-cur_frame: .byte total_frames
+; TODO: Move these variables to zero page
+cur_frame: .byte 0
+cur_iter:  .byte speed
 
 
 init_sprite:
-    lda #$80        ; set sprite #0 with frame at $2000
-    sta $07f8
-
     lda #%00000001  ; enable sprite #0
     sta $d015
 
@@ -98,4 +123,24 @@ init_sprite:
     sta $d000       ; x-coord
     stx $d001       ; y-coord
 
+    rts
+
+
+update_sprite:
+    dec cur_iter
+    bne done
+    lda #speed
+    sta cur_iter
+
+    ldx cur_frame
+    inx
+    txa
+    cmp #total_frames
+    bne render
+    lda #0
+render:
+    sta cur_frame
+    adc #$80
+    sta $07f8
+done:
     rts
