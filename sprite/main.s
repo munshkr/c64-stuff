@@ -46,6 +46,8 @@ main: .(
 irq: .(
     dec $d019       ; acknowledge IRQ / clear register for next interrupt
 
+    jsr move_sprites
+    jsr update_sprite_positions
     jsr animate_sprites
 
     jmp $ea31       ; return to Kernel routine
@@ -88,8 +90,8 @@ char_multicolor_1 = $0b
 char_multicolor_2 = $01
 char_color = $0f
 
-posx = ((screen_width / 2) + screen_right_border_width - sprite_half_width)
-posy = ((screen_height / 2) + screen_top_border_height - sprite_half_height)
+center_x = ((screen_width / 2) + screen_right_border_width - sprite_half_width)
+center_y = ((screen_height / 2) + screen_top_border_height - sprite_half_height)
 
 total_frames = 6
 speed = 3
@@ -97,6 +99,11 @@ speed = 3
 ; TODO: Move these variables to zero page
 cur_frame: .byte 0
 cur_iter:  .byte speed
+pos_x_h:   .byte 0
+pos_x:     .byte center_x
+pos_y:     .byte center_y
+speed_x:   .byte 2
+speed_y:   .byte 2
 
 
 init_sprite: .(
@@ -121,14 +128,56 @@ init_sprite: .(
     lda #char_color
     sta $d027
 
-    lda #posx       ; set sprite#0 positions with x/y coords
-    ldx #posy
-    sta $d000       ; x-coord
-    stx $d001       ; y-coord
-
     rts
 .)
 
+move_sprites: .(
+    clc
+    lda pos_y
+    adc speed_y
+    sta pos_y
+check_y:
+    cmp #50             ; check hit at top
+    beq invert_speed_y
+    cmp #230            ; check hit at bottom
+    bne done_y
+invert_speed_y:
+    lda speed_y
+    eor #$ff            ; invert(n)+1 = neg(n)  (two's complement)
+    clc
+    adc #1
+    sta speed_y
+done_y:
+
+; TODO include $d010 8th bit in sum
+    clc
+    lda pos_x
+    adc speed_x
+    sta pos_x
+check_x:
+    cmp #24             ; check hit at left
+    beq invert_speed_x
+    cmp #254            ; check hit at right
+    bne done_x
+invert_speed_x:
+    lda speed_x
+    eor #$ff
+    clc
+    adc #1
+    sta speed_x
+done_x:
+    rts
+.)
+
+update_sprite_positions: .(
+    lda pos_x
+    sta $d000
+    lda pos_y
+    sta $d001
+    lda pos_x_h
+    sta $d010
+    rts
+.)
 
 animate_sprites: .(
     dec cur_iter
