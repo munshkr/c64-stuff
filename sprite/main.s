@@ -57,6 +57,7 @@ irq: .(
 init_screen: .(
     ldx #$00
     stx $d021     ; set background color
+    ldx #$01      ; FIXME: remove this line after getting wall bouncing right
     stx $d020     ; set border color
 
 clear:
@@ -102,8 +103,8 @@ cur_iter:  .byte speed
 pos_x_h:   .byte 0
 pos_x:     .byte center_x
 pos_y:     .byte center_y
-speed_x:   .byte 2
-speed_y:   .byte 2
+speed_x:   .byte 1
+speed_y:   .byte 1
 
 
 init_sprite: .(
@@ -137,7 +138,7 @@ move_sprites: .(
     adc speed_y
     sta pos_y
 check_y:
-    cmp #50             ; check hit at top
+    cmp #46             ; check hit at top
     beq invert_speed_y
     cmp #230            ; check hit at bottom
     bne done_y
@@ -149,16 +150,22 @@ invert_speed_y:
     sta speed_y
 done_y:
 
-; TODO include $d010 8th bit in sum
     clc
     lda pos_x
     adc speed_x
     sta pos_x
+    bne check_x
+    lda pos_x_h
+    eor #%00000001
+    sta pos_x_h
 check_x:
     cmp #24             ; check hit at left
     beq invert_speed_x
-    cmp #254            ; check hit at right
+    cmp #$40            ; check hit at right
     bne done_x
+    lda pos_x_h
+    and #%00000001
+    beq done_x
 invert_speed_x:
     lda speed_x
     eor #$ff
