@@ -15,7 +15,7 @@
 .dsb $c000 - *
 * = $c000
 
-main:
+main: .(
     sei
 
     jsr init_screen   ; clear the screen
@@ -40,17 +40,19 @@ main:
 
     cli
     jmp *
+.)
 
 
-irq:
+irq: .(
     dec $d019       ; acknowledge IRQ / clear register for next interrupt
 
-    jsr update_sprite
+    jsr animate_sprites
 
     jmp $ea31       ; return to Kernel routine
+.)
 
 
-init_screen:
+init_screen: .(
     ldx #$00
     stx $d021     ; set background color
     stx $d020     ; set border color
@@ -71,6 +73,7 @@ clear:
     inx
     bne clear
     rts
+.)
 
 
 screen_width = 320
@@ -96,7 +99,7 @@ cur_frame: .byte 0
 cur_iter:  .byte speed
 
 
-init_sprite:
+init_sprite: .(
     lda #%00000001  ; enable sprite #0
     sta $d015
 
@@ -124,9 +127,10 @@ init_sprite:
     stx $d001       ; y-coord
 
     rts
+.)
 
 
-update_sprite:
+animate_sprites: .(
     dec cur_iter
     bne done
     lda #speed
@@ -144,3 +148,4 @@ render:
     sta $07f8
 done:
     rts
+.)
