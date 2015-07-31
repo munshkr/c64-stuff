@@ -1,21 +1,37 @@
-; load PRG at $0801 to load "autostart routine"
-.byte $01, $08
-* = $0801
+.import __MAIN_CODE_LOAD__
 
-; BASIC autostart routine (aka "10 SYS 4096")
-.byte $0c, $08, $0a, $00, $9e, $20
-.byte $34, $39, $31, $35, $32            ; 4096 = $1000
-.byte $00, $00, $00
+SCREEN_WIDTH = 320
+SCREEN_HEIGHT = 200
+SCREEN_RIGHT_BORDER_WIDTH = 24
+SCREEN_TOP_BORDER_HEIGHT = 30
+SPRITE_HALF_WIDTH = 6
+SPRITE_HALF_HEIGHT = 10
 
-.dsb $2000 - *
-* = $2000
+CHAR_BACKGROUND_COLOR = $00
+CHAR_MULTICOLOR_1 = $0B
+CHAR_MULTICOLOR_2 = $01
+CHAR_COLOR = $0F
 
-.bin 0, 0, "sprites.raw"
+CENTER_X = ((SCREEN_WIDTH / 2) + SCREEN_RIGHT_BORDER_WIDTH - SPRITE_HALF_WIDTH)
+CENTER_Y = ((SCREEN_HEIGHT / 2) + SCREEN_TOP_BORDER_HEIGHT - SPRITE_HALF_HEIGHT)
 
-.dsb $c000 - *
-* = $c000
+TOTAL_FRAMES = 6
+SPEED = 3
 
-main: .(
+
+.segment "DATA"
+    cur_frame: .byte 0
+    cur_iter:  .byte SPEED
+    pos_x_h:   .byte 0
+    pos_x:     .byte CENTER_X
+    pos_y:     .byte CENTER_Y
+    speed_x:   .byte 1
+    speed_y:   .byte 1
+
+.segment "CODE"
+    jmp __MAIN_CODE_LOAD__
+
+.segment "MAIN_CODE"
     sei
 
     jsr init_screen   ; clear the screen
@@ -40,10 +56,8 @@ main: .(
 
     cli
     jmp *
-.)
 
-
-irq: .(
+irq:
     dec $d019       ; acknowledge IRQ / clear register for next interrupt
 
     jsr move_sprites
@@ -51,15 +65,12 @@ irq: .(
     jsr animate_sprites
 
     jmp $ea31       ; return to Kernel routine
-.)
 
-
-init_screen: .(
+init_screen:
     ldx #$00
     stx $d021     ; set background color
     stx $d020     ; set border color
-
-clear:
+@loop:
     lda #$20      ; #$20 is the spacebar Screen Code
     sta $0400, x  ; fill four areas with 256 spacebar characters
     sta $0500, x
@@ -73,40 +84,10 @@ clear:
     sta $dae8, x
 
     inx
-    bne clear
+    bne @loop
     rts
-.)
 
-
-screen_width = 320
-screen_height = 200
-screen_right_border_width = 24
-screen_top_border_height = 30
-sprite_half_width = 6
-sprite_half_height = 10
-
-char_background_color = $00
-char_multicolor_1 = $0b
-char_multicolor_2 = $01
-char_color = $0f
-
-center_x = ((screen_width / 2) + screen_right_border_width - sprite_half_width)
-center_y = ((screen_height / 2) + screen_top_border_height - sprite_half_height)
-
-total_frames = 6
-speed = 2
-
-; TODO: Move these variables to zero page
-cur_frame: .byte 0
-cur_iter:  .byte speed
-pos_x_h:   .byte 0
-pos_x:     .byte center_x
-pos_y:     .byte center_y
-speed_x:   .byte 2
-speed_y:   .byte 2
-
-
-init_sprite: .(
+init_sprite:
     lda #%00000001  ; enable sprite #0
     sta $d015
 
@@ -117,21 +98,20 @@ init_sprite: .(
     sta $d01b
 
     ; set shared colors
-    lda #char_background_color
+    lda #CHAR_BACKGROUND_COLOR
     sta $d021
-    lda #char_multicolor_1
+    lda #CHAR_MULTICOLOR_1
     sta $d025
-    lda #char_multicolor_2
+    lda #CHAR_MULTICOLOR_2
     sta $d026
 
     ; set sprite #0 color
-    lda #char_color
+    lda #CHAR_COLOR
     sta $d027
 
     rts
-.)
 
-move_sprites: .(
+move_sprites:
     clc
     lda pos_y
     adc speed_y
@@ -175,9 +155,8 @@ invert_speed_x:
     sta speed_x
 done_x:
     rts
-.)
 
-update_sprite_positions: .(
+update_sprite_positions:
     lda pos_x
     sta $d000
     lda pos_y
@@ -185,24 +164,26 @@ update_sprite_positions: .(
     lda pos_x_h
     sta $d010
     rts
-.)
 
-animate_sprites: .(
+animate_sprites:
     dec cur_iter
-    bne done
-    lda #speed
+    bne done_animation
+    lda #SPEED
     sta cur_iter
 
     ldx cur_frame
     inx
     txa
-    cmp #total_frames
+    cmp #TOTAL_FRAMES
     bne render
     lda #0
 render:
     sta cur_frame
     adc #$80
     sta $07f8
-done:
+done_animation:
     rts
-.)
+
+
+.segment "SPRITES"
+  .incbin "sprites.raw"
