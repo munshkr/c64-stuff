@@ -57,7 +57,6 @@ irq: .(
 init_screen: .(
     ldx #$00
     stx $d021     ; set background color
-    ldx #$01      ; FIXME: remove this line after getting wall bouncing right
     stx $d020     ; set border color
 
 clear:
@@ -95,7 +94,7 @@ center_x = ((screen_width / 2) + screen_right_border_width - sprite_half_width)
 center_y = ((screen_height / 2) + screen_top_border_height - sprite_half_height)
 
 total_frames = 6
-speed = 3
+speed = 2
 
 ; TODO: Move these variables to zero page
 cur_frame: .byte 0
@@ -103,8 +102,8 @@ cur_iter:  .byte speed
 pos_x_h:   .byte 0
 pos_x:     .byte center_x
 pos_y:     .byte center_y
-speed_x:   .byte 1
-speed_y:   .byte 1
+speed_x:   .byte 2
+speed_y:   .byte 2
 
 
 init_sprite: .(
@@ -154,17 +153,19 @@ done_y:
     lda pos_x
     adc speed_x
     sta pos_x
-    bne check_x
+    bne check_left_x
     lda pos_x_h
     eor #%00000001
     sta pos_x_h
-check_x:
+check_left_x:
     cmp #24             ; check hit at left
+    bne check_right_x
+    lda pos_x_h
     beq invert_speed_x
+check_right_x:
     cmp #$40            ; check hit at right
     bne done_x
     lda pos_x_h
-    and #%00000001
     beq done_x
 invert_speed_x:
     lda speed_x
