@@ -1,5 +1,7 @@
 .import __MAIN_CODE_LOAD__
 
+.include "c64.inc"  ; C64 constants
+
 SCREEN_WIDTH = 320
 SCREEN_HEIGHT = 200
 SCREEN_RIGHT_BORDER_WIDTH = 24
@@ -17,16 +19,17 @@ CENTER_Y = ((SCREEN_HEIGHT / 2) + SCREEN_TOP_BORDER_HEIGHT - SPRITE_HALF_HEIGHT)
 
 TOTAL_FRAMES = 6
 SPEED = 3
+NUM_SPRITES = 3
 
 
 .segment "DATA"
     cur_frame: .byte 0
     cur_iter:  .byte SPEED
     pos_x_h:   .byte 0
-    pos_x:     .byte CENTER_X
-    pos_y:     .byte CENTER_Y
-    speed_x:   .byte 1
-    speed_y:   .byte 1
+    pos_x:     .byte CENTER_X - 10, CENTER_X + 20, CENTER_X
+    pos_y:     .byte CENTER_Y - 5,  CENTER_Y + 10, CENTER_Y
+    speed_x:   .byte 1,$ff,1
+    speed_y:   .byte $ff,1,1
 
 .segment "CODE"
     jmp __MAIN_CODE_LOAD__
@@ -38,27 +41,27 @@ SPEED = 3
     jsr init_sprite   ; enable sprite
 
     ldy #$7f          ; $7f = %01111111
-    sty $dc0d         ; turn off CIAs Timer interrupts ($7f = %01111111)
-    sty $dd0d
-    lda $dc0d         ; by reading $dc0d and $dd0d we cancel all CIA-IRQs
-    lda $dd0d         ; in queue/unprocessed.
+    sty CIA1_ICR      ; turn off CIAs Timer interrupts ($7f = %01111111)
+    sty CIA2_ICR
+    lda CIA1_ICR      ; by reading $dc0d and $dd0d we cancel all CIA-IRQs
+    lda CIA2_ICR      ; in queue/unprocessed.
 
     lda #$01          ; set Interrupt Request Mask
-    sta $d01a         ; we want IRQ by Rasterbeam (%00000001)
+    sta VIC_IMR       ; we want IRQ by Rasterbeam (%00000001)
 
     lda #<irq         ; point IRQ Vector to our custom irq routine
     ldx #>irq
-    sta $0314         ; store in $314/$315
-    stx $0315
+    sta IRQVec        ; store in $314/$315
+    stx IRQVec+1
 
     lda #$00          ; trigger interrupt at row zero
-    sta $d012
+    sta VIC_HLINE
 
     cli
     jmp *
 
 irq:
-    dec $d019       ; acknowledge IRQ / clear register for next interrupt
+    dec VIC_IRR       ; acknowledge IRQ / clear register for next interrupt
 
     jsr move_sprites
     jsr update_sprite_positions
@@ -68,8 +71,8 @@ irq:
 
 init_screen:
     ldx #$00
-    stx $d021     ; set background color
-    stx $d020     ; set border color
+    stx VIC_BG_COLOR0     ; set background color
+    stx VIC_BORDERCOLOR   ; set border color
 @loop:
     lda #$20      ; #$20 is the spacebar Screen Code
     sta $0400, x  ; fill four areas with 256 spacebar characters
@@ -88,26 +91,28 @@ init_screen:
     rts
 
 init_sprite:
-    lda #%00000001  ; enable sprite #0
-    sta $d015
+    lda #%00000111  ; enable sprite #0
+    sta VIC_SPR_ENA
 
-    lda #%00000001  ; set multicolor mode for sprites
-    sta $d01c
+    lda #%00000111  ; set multicolor mode for sprites
+    sta VIC_SPR_MCOLOR
 
     lda #%00000000  ; all sprites have priority over background
-    sta $d01b
+    sta VIC_SPR_BG_PRIO
 
     ; set shared colors
     lda #CHAR_BACKGROUND_COLOR
-    sta $d021
+    sta VIC_BG_COLOR0
     lda #CHAR_MULTICOLOR_1
-    sta $d025
+    sta VIC_SPR_MCOLOR0
     lda #CHAR_MULTICOLOR_2
-    sta $d026
+    sta VIC_SPR_MCOLOR1
 
     ; set sprite #0 color
     lda #CHAR_COLOR
-    sta $d027
+    sta VIC_SPR0_COLOR
+    sta VIC_SPR1_COLOR
+    sta VIC_SPR2_COLOR
 
     rts
 
@@ -157,17 +162,25 @@ done_x:
     rts
 
 update_sprite_positions:
-    lda pos_x
-    sta $d000
-    lda pos_y
-    sta $d001
-    lda pos_x_h
-    sta $d010
+    ldx #0
+@loop:
+    txa
+    asl
+    tay
+    lda pos_x, x
+    sta VIC_SPR0_X, y
+    lda pos_y, x
+    sta VIC_SPR0_Y, y
+    inx
+    cpx #NUM_SPRITES
+    bne @loop
+    lda pos_x_h          ; update bit#8 of x-coordinate of all sprites
+    sta VIC_SPR_HI_X
     rts
 
 animate_sprites:
     dec cur_iter
-    bne done_animation
+    bne @done
     lda #SPEED
     sta cur_iter
 
@@ -175,13 +188,13 @@ animate_sprites:
     inx
     txa
     cmp #TOTAL_FRAMES
-    bne render
+    bne @render
     lda #0
-render:
+@render:
     sta cur_frame
     adc #$80
     sta $07f8
-done_animation:
+@done:
     rts
 
 
