@@ -25,11 +25,11 @@ NUM_SPRITES = 3
 .segment "DATA"
     cur_frame: .byte 0
     cur_iter:  .byte SPEED
-    pos_x_h:   .byte 0
     pos_x:     .byte CENTER_X - 10, CENTER_X + 20, CENTER_X
     pos_y:     .byte CENTER_Y - 5,  CENTER_Y + 10, CENTER_Y
-    speed_x:   .byte 1,$ff,1
-    speed_y:   .byte $ff,1,1
+    pos_x_h:   .byte 0
+    speed_x:   .byte $01, $ff, $01
+    speed_y:   .byte $ff, $01, $01
 
 .segment "CODE"
     jmp __MAIN_CODE_LOAD__
@@ -40,9 +40,9 @@ NUM_SPRITES = 3
     jsr init_screen   ; clear the screen
     jsr init_sprite   ; enable sprite
 
-    ldy #$7f          ; $7f = %01111111
-    sty CIA1_ICR      ; turn off CIAs Timer interrupts ($7f = %01111111)
-    sty CIA2_ICR
+    lda #%01111111
+    sta CIA1_ICR      ; turn off CIAs Timer interrupts
+    sta CIA2_ICR
     lda CIA1_ICR      ; by reading $dc0d and $dd0d we cancel all CIA-IRQs
     lda CIA2_ICR      ; in queue/unprocessed.
 
@@ -75,12 +75,14 @@ init_screen:
     stx VIC_BORDERCOLOR   ; set border color
 @loop:
     lda #$20      ; #$20 is the spacebar Screen Code
+    ; TODO: Use constant SCREEN_RAM + offset
     sta $0400, x  ; fill four areas with 256 spacebar characters
     sta $0500, x
     sta $0600, x
     sta $06e8, x
 
     lda #$01      ; set foreground to black in Color RAM
+    ; TODO: Use constant SCREEN_RAM + offset
     sta $d800, x
     sta $d900, x
     sta $da00, x
@@ -122,8 +124,10 @@ move_sprites:
     adc speed_y
     sta pos_y
 check_y:
-    cmp #46             ; check hit at top
+    ; TODO: Use constants
+    cmp #48             ; check hit at top
     beq invert_speed_y
+    ; TODO: Use constants
     cmp #230            ; check hit at bottom
     bne done_y
 invert_speed_y:
@@ -143,11 +147,13 @@ done_y:
     eor #%00000001
     sta pos_x_h
 check_left_x:
+    ; TODO: Use constants
     cmp #24             ; check hit at left
     bne check_right_x
     lda pos_x_h
     beq invert_speed_x
 check_right_x:
+    ; TODO: Use constants
     cmp #$40            ; check hit at right
     bne done_x
     lda pos_x_h
@@ -192,6 +198,7 @@ animate_sprites:
     lda #0
 @render:
     sta cur_frame
+    ; TODO: Use constants
     adc #$80
     sta $07f8
 @done:
