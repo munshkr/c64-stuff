@@ -125,59 +125,67 @@ move_sprites:
     lda #1
     sta temp
     ldx #0
-move_loop:
+@loop:
     clc
-    lda pos_y, x
-    adc speed_y, x
+    lda speed_y, x
+    adc pos_y, x
     sta pos_y, x
-check_y:
+
     ; TODO: Use constants
     cmp #48             ; check hit at top
-    beq invert_speed_y
+    beq @invert_speed_y
     ; TODO: Use constants
     cmp #230            ; check hit at bottom
-    bne done_y
-invert_speed_y:
+    bne @done_y
+@invert_speed_y:
     lda speed_y, x
     eor #$ff            ; invert(n)+1 = neg(n)  (two's complement)
     clc
     adc #1
     sta speed_y, x
-done_y:
+@done_y:
 
     clc
-    lda pos_x, x
-    adc speed_x, x
+    lda speed_x, x
+    bpl @pos
+@neg:
+    adc pos_x, x
     sta pos_x, x
-    bne check_left_x
+    bcs @check_left_x
+    beq @toggle_bit
+@pos:
+    adc pos_x, x
+    sta pos_x, x
+    bcc @check_left_x
+@toggle_bit:
     lda pos_x_h         ; if pos_x overflows, invert 8th bit
     eor temp
     sta pos_x_h
-check_left_x:
+@check_left_x:
     ; TODO: Use constants
     cmp #24             ; check hit at left
-    bne check_right_x
+    bne @check_right_x
     lda pos_x_h
     and temp
-    beq invert_speed_x
-check_right_x:
+    beq @invert_speed_x
+@check_right_x:
     ; TODO: Use constants
     cmp #$40            ; check hit at right
-    bne done_x
+    bne @done_x
     lda pos_x_h
     and temp
-    beq done_x
-invert_speed_x:
+    beq @done_x
+@invert_speed_x:
     lda speed_x, x
     eor #$ff
     clc
     adc #1
     sta speed_x, x
-done_x:
+@done_x:
     asl temp
     inx
     cpx #NUM_SPRITES
-    bne move_loop
+    bne @loop
     rts
 
 update_sprite_positions:
