@@ -74,7 +74,6 @@ irq:
 init_screen:
     ldx #$00
     stx VIC_BG_COLOR0     ; set background color
-    ldx #$01
     stx VIC_BORDERCOLOR   ; set border color
 @loop:
     lda #$20      ; #$20 is the spacebar Screen Code
@@ -139,9 +138,9 @@ move_sprites:
     bne @done_y
 @invert_speed_y:
     lda speed_y, x
-    eor #$ff            ; invert(n)+1 = neg(n)  (two's complement)
-    clc
-    adc #1
+    eor #$ff            ; negate(a) = invert(a) + 1  (two's complement)
+    sec
+    adc #0
     sta speed_y, x
 @done_y:
 
@@ -178,8 +177,8 @@ move_sprites:
 @invert_speed_x:
     lda speed_x, x
     eor #$ff
-    clc
-    adc #1
+    sec
+    adc #0
     sta speed_x, x
 @done_x:
     asl temp
