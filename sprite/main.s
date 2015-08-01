@@ -19,17 +19,19 @@ CENTER_Y = ((SCREEN_HEIGHT / 2) + SCREEN_TOP_BORDER_HEIGHT - SPRITE_HALF_HEIGHT)
 
 TOTAL_FRAMES = 6
 SPEED = 3
-NUM_SPRITES = 3
+NUM_SPRITES = 8
 
+.segment "ZEROPAGE"
+    temp: .byte 0
 
 .segment "DATA"
     cur_frame: .byte 0
     cur_iter:  .byte SPEED
-    pos_x:     .byte CENTER_X - 10, CENTER_X + 20, CENTER_X
-    pos_y:     .byte CENTER_Y - 5,  CENTER_Y + 10, CENTER_Y
+    pos_x:     .byte CENTER_X, CENTER_X+16, CENTER_X-10, CENTER_X+12, CENTER_X+23, CENTER_X-5, CENTER_X-34, CENTER_X+3
+    pos_y:     .byte CENTER_Y, CENTER_Y+4, CENTER_Y+12, CENTER_Y-4, CENTER_Y-25, CENTER_Y-10, CENTER_Y+30, CENTER_Y-14
     pos_x_h:   .byte 0
-    speed_x:   .byte $01, $ff, $01
-    speed_y:   .byte $ff, $01, $01
+    speed_x:   .byte $01, $ff, $01, $02, $ff, $02, $01, $ff
+    speed_y:   .byte $ff, $02, $01, $ff, $ff, $02, $02, $01
 
 .segment "CODE"
     jmp __MAIN_CODE_LOAD__
@@ -72,6 +74,7 @@ irq:
 init_screen:
     ldx #$00
     stx VIC_BG_COLOR0     ; set background color
+    ldx #$01
     stx VIC_BORDERCOLOR   ; set border color
 @loop:
     lda #$20      ; #$20 is the spacebar Screen Code
@@ -93,10 +96,10 @@ init_screen:
     rts
 
 init_sprite:
-    lda #%00000111  ; enable sprite #0
+    lda #%11111111  ; enable sprite #0
     sta VIC_SPR_ENA
 
-    lda #%00000111  ; set multicolor mode for sprites
+    lda #%11111111  ; set multicolor mode for sprites
     sta VIC_SPR_MCOLOR
 
     lda #%00000000  ; all sprites have priority over background
@@ -112,17 +115,21 @@ init_sprite:
 
     ; set sprite #0 color
     lda #CHAR_COLOR
-    sta VIC_SPR0_COLOR
-    sta VIC_SPR1_COLOR
-    sta VIC_SPR2_COLOR
+    .repeat NUM_SPRITES, i
+      sta VIC_SPR0_COLOR + i
+    .endrepeat
 
     rts
 
 move_sprites:
+    lda #1
+    sta temp
+    ldx #0
+move_loop:
     clc
-    lda pos_y
-    adc speed_y
-    sta pos_y
+    lda pos_y, x
+    adc speed_y, x
+    sta pos_y, x
 check_y:
     ; TODO: Use constants
     cmp #48             ; check hit at top
@@ -131,57 +138,61 @@ check_y:
     cmp #230            ; check hit at bottom
     bne done_y
 invert_speed_y:
-    lda speed_y
+    lda speed_y, x
     eor #$ff            ; invert(n)+1 = neg(n)  (two's complement)
     clc
     adc #1
-    sta speed_y
+    sta speed_y, x
 done_y:
 
     clc
-    lda pos_x
-    adc speed_x
-    sta pos_x
+    lda pos_x, x
+    adc speed_x, x
+    sta pos_x, x
     bne check_left_x
-    lda pos_x_h
-    eor #%00000001
+    lda pos_x_h         ; if pos_x overflows, invert 8th bit
+    eor temp
     sta pos_x_h
 check_left_x:
     ; TODO: Use constants
     cmp #24             ; check hit at left
     bne check_right_x
     lda pos_x_h
+    and temp
     beq invert_speed_x
 check_right_x:
     ; TODO: Use constants
     cmp #$40            ; check hit at right
     bne done_x
     lda pos_x_h
+    and temp
     beq done_x
 invert_speed_x:
-    lda speed_x
+    lda speed_x, x
     eor #$ff
     clc
     adc #1
-    sta speed_x
+    sta speed_x, x
 done_x:
+    asl temp
+    inx
+    cpx #NUM_SPRITES
+    bne move_loop
     rts
 
 update_sprite_positions:
-    ldx #0
-@loop:
-    txa
-    asl
-    tay
-    lda pos_x, x
-    sta VIC_SPR0_X, y
-    lda pos_y, x
-    sta VIC_SPR0_Y, y
-    inx
-    cpx #NUM_SPRITES
-    bne @loop
+    .repeat NUM_SPRITES, i
+      ldx #i
+      ldy #(i*2)
+      lda pos_x, x
+      sta VIC_SPR0_X, y
+      lda pos_y, x
+      sta VIC_SPR0_Y, y
+    .endrepeat
+
     lda pos_x_h          ; update bit#8 of x-coordinate of all sprites
     sta VIC_SPR_HI_X
+
     rts
 
 animate_sprites:
@@ -200,10 +211,12 @@ animate_sprites:
     sta cur_frame
     ; TODO: Use constants
     adc #$80
-    sta $07f8
+    .repeat NUM_SPRITES, i
+      sta $07f8 + i
+    .endrepeat
 @done:
     rts
 
 
 .segment "SPRITES"
-  .incbin "sprites.raw"
+    .incbin "sprites.raw"
