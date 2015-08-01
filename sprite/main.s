@@ -169,7 +169,7 @@ move_sprites:
     beq @invert_speed_x
 @check_right_x:
     ; TODO: Use constants
-    cmp #$40            ; check hit at right
+    cmp #64             ; check hit at right
     bne @done_x
     lda pos_x_h
     and temp
@@ -181,9 +181,8 @@ move_sprites:
     adc #0
     sta speed_x, x
 @done_x:
-    asl temp
     inx
-    cpx #NUM_SPRITES
+    asl temp
     bne @loop
     rts
 
