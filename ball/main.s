@@ -16,13 +16,14 @@ CHAR_COLOR = $01
 
 
 .segment "DATA"
-    pos_x:   .byte CENTER_X
-    pos_y:   .byte CENTER_Y
+    pos_x:   .word CENTER_X << 8
+    pos_y:   .word CENTER_Y << 8
     pos_x_h: .byte 0
-    vel_x:   .byte 1
-    vel_y:   .byte 0
-    accel_x: .byte 1
-    accel_y: .byte 0
+
+    vel_x:   .word $10
+    vel_y:   .word 0
+    accel_x: .word $10
+    accel_y: .word 0
 
 .segment "CODE"
     jmp __MAIN_CODE_LOAD__
@@ -114,10 +115,17 @@ init_sprite:
     lda accel_x
     adc vel_x
     sta vel_x
+    lda accel_x+1
+    adc vel_x+1
+    sta vel_x+1
+
     clc
     lda accel_y
     adc vel_y
     sta vel_y
+    lda accel_y+1
+    adc vel_y+1
+    sta vel_y+1
     rts
 .endproc
 
@@ -126,18 +134,24 @@ init_sprite:
     lda vel_y
     adc pos_y
     sta pos_y
+    lda vel_y+1
+    adc pos_y+1
+    sta pos_y+1
 
     clc
     lda vel_x
-    bpl @pos
-@neg:
     adc pos_x
     sta pos_x
+    lda vel_x+1
+    bpl @pos
+@neg:
+    adc pos_x+1
+    sta pos_x+1
     bcs @done
     beq @toggle_pos_x_h
 @pos:
-    adc pos_x
-    sta pos_x
+    adc pos_x+1
+    sta pos_x+1
     bcc @done
 @toggle_pos_x_h:
     lda pos_x_h
@@ -148,9 +162,9 @@ init_sprite:
 .endproc
 
 .proc update_sprites
-    lda pos_x
+    lda pos_x+1
     sta VIC_SPR0_X
-    lda pos_y
+    lda pos_y+1
     sta VIC_SPR0_Y
     lda pos_x_h          ; update bit#8 of x-coordinate of all sprites
     sta VIC_SPR_HI_X
