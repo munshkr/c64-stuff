@@ -22,7 +22,7 @@ CHAR_COLOR = $01
 
     vel_x:   .word $10
     vel_y:   .word 0
-    accel_x: .word $10
+    accel_x: .word $1
     accel_y: .word 0
 
 .segment "CODE"
@@ -54,6 +54,7 @@ CHAR_COLOR = $01
     cli
     jmp *
 
+
 irq:
     dec VIC_IRR       ; acknowledge IRQ / clear register for next interrupt
 
@@ -63,11 +64,12 @@ irq:
 
     jmp $ea31       ; return to Kernel routine
 
-init_screen:
+
+.proc init_screen
     ldx #0
     stx VIC_BG_COLOR0     ; set background color
     stx VIC_BORDERCOLOR   ; set border color
-@loop:
+loop:
     lda #$20      ; #$20 is the spacebar Screen Code
     ; TODO: Use constant SCREEN_RAM + offset
     sta $0400, x  ; fill four areas with 256 spacebar characters
@@ -83,10 +85,11 @@ init_screen:
     sta $dae8, x
 
     inx
-    bne @loop
+    bne loop
     rts
+.endproc
 
-init_sprite:
+.proc init_sprite
     lda #%00000001  ; enable sprite #0
     sta VIC_SPR_ENA
 
@@ -109,6 +112,7 @@ init_sprite:
     sta $07f8
 
     rts
+.endproc
 
 .proc update_velocity
     clc
@@ -143,21 +147,21 @@ init_sprite:
     adc pos_x
     sta pos_x
     lda vel_x+1
-    bpl @pos
-@neg:
+    bpl pos
+neg:
     adc pos_x+1
     sta pos_x+1
-    bcs @done
-    beq @toggle_pos_x_h
-@pos:
+    bcs done
+    beq toggle_pos_x_h
+pos:
     adc pos_x+1
     sta pos_x+1
-    bcc @done
-@toggle_pos_x_h:
+    bcc done
+toggle_pos_x_h:
     lda pos_x_h
     eor #%00000001
     sta pos_x_h
-@done:
+done:
     rts
 .endproc
 
